@@ -31,36 +31,50 @@ server.use((req, res, next) => {
   const allowedOrigins = [
     'http://localhost:3000',
     'https://localhost:3000',
-    // Netlify domains
-    'https://*.netlify.app',
-    'https://zaio-capstone-project.netlify.app',
-    // Vercel domains
-    'https://*.vercel.app',
-    'https://tebogoairbnb.vercel.app',
-    'https://air-bnb-anoonaas-projects.vercel.app',
-    'https://air-bnb-git-main-anoonaas-projects.vercel.app'
+    // Netlify known host example
+    'zaio-capstone-project.netlify.app',
+    // Some specific Vercel hosts
+    'tebogoairbnb.vercel.app',
+    'air-bnb-anoonaas-projects.vercel.app',
+    'air-bn-b-capstone-gamma.vercel.app'
   ];
-  
+
   const origin = req.headers.origin;
-  if (origin && allowedOrigins.some(allowedOrigin => {
-    if (allowedOrigin.includes('*')) {
-      const pattern = allowedOrigin.replace('*', '');
-      return origin.includes(pattern);
+  if (origin) {
+    try {
+      const url = new URL(origin);
+      const originHost = url.host; // e.g. air-bn-b-capstone-gamma.vercel.app
+
+      const isAllowed = (
+        // allow exact hosts listed above
+        allowedOrigins.includes(originHost) ||
+        // allow any subdomain under vercel.app (e.g. *.vercel.app)
+        originHost.endsWith('.vercel.app') ||
+        // allow any subdomain under netlify.app
+        originHost.endsWith('.netlify.app')
+      );
+
+      if (isAllowed) {
+        // Must echo the origin when credentials are used (can't use '*')
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Vary', 'Origin');
+      }
+    } catch (e) {
+      // If origin is not a valid URL, do nothing and continue
+      console.warn('CORS: invalid origin header:', origin);
     }
-    return allowedOrigin === origin;
-  })) {
-    res.header('Access-Control-Allow-Origin', origin);
   }
-  
+
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  // Allow credentials to support cookies / Authorization header from the browser
   res.header('Access-Control-Allow-Credentials', 'true');
-  
+
   if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
+    return res.sendStatus(200);
   }
+
+  next();
 });
 
 // Increase JSON body parser limit to handle large payloads (like base64 images)
